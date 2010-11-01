@@ -16,7 +16,6 @@
   <audience>Developers</audience>
   <license rdf:resource="http://www.opensource.org/licenses/mit-license.php">MIT</license>
   <programming-language>Python</programming-language>
-  <programming-language>Python 3</programming-language>
 
   <!-- Credits -->
   <maintainer>
@@ -33,6 +32,7 @@
   -->
 
   <!-- Releases -->
+  <!--
   <release>
     <Version>
       <name>unstable</name>
@@ -42,6 +42,7 @@
       <file-release rdf:resource="http://mfgames.com/releases/mfgames-doap/mfgames-doap.zip">Source (.zip)</file-release>
     </Version>
   </release>
+  -->
 
   <!-- Repositories -->
   <!--
