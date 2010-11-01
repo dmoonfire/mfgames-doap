@@ -1,0 +1,170 @@
+#!/usr/bin/env python
+
+
+import argparse
+import amara
+import lxml.objectify
+import sys
+
+
+class Process(object):
+    """Processes the input file and generates a Wiki output."""
+
+    def __init__(self, input_args):
+        """Processes DOAP files and produces Wiki output."""
+
+        # Parse the arguments and pull them into the appropriate formats.
+        parser = argparse.ArgumentParser(
+            description='Manipulate DOAP files.')
+        parser.add_argument(
+            "doap",
+            type=str,
+            help="The DOAP file to process.")
+        parser.add_argument(
+            "output",
+            type=str,
+            help="The output file to process.")
+        self.args = parser.parse_args(input_args)
+        
+        # Convert the DOAP into a Pythonic data structure.
+        doap_file = open(self.args.doap, 'r')
+        self.doap = amara.parse(doap_file)
+        doap_file.close()
+        
+        # Pull out useful variables and save them.
+        self.project = self.doap.Project
+
+        # Controls for output.
+        self.spacer = 0
+        self.credits = []
+
+    def process(self):
+        # Open the output file from parsing.
+        self.output = open(self.args.output, 'w')
+
+        # Write the basic header.
+        self.output.write('= {0}\n'.format(self.project.name))
+        self.write_audience()
+        self.write_license()
+        self.write_language()
+        self.write_spacing()
+        self.output.write('\n{0}'.format(self.project.description))
+
+        # Write releases and other blocks.
+        self.write_releases()
+        self.write_credits()
+
+        # Close the output.
+        self.output.write('\n')
+        self.output.close()
+
+    def contains(self, node, child):
+        return child in node.xml_child_elements
+
+    def format_version(self, version):
+        return "{0} ({1}) ''{2}''".format(
+            version.revision,
+            version.name,
+            version.created)
+
+    def get_credit(self, tag, text):
+        if not self.contains(self.project, tag):
+            return
+
+        self.credits.append('* {0}'.format(text))
+
+        for credit in self.project.xml_children:
+            if not isinstance(credit, amara.bindery.element_base):
+                continue
+
+            if credit.localName != tag:
+                continue
+
+            person = credit.Person
+            line = person.name
+
+            if self.contains(person, 'homepage'):
+                line = '[[{0}|{1}]]'.format(
+                    person.homepage.resource,
+                    person.name)
+
+            self.credits.append('** {0}'.format(line))
+
+    def write_credits(self):
+        # Get the various credits and format them.
+        self.get_credit('maintainer', 'Maintainers')
+
+        if len(self.credits) == 0:
+            return
+
+        # Write out the header line.
+        self.output.write('\n== Credits\n')
+
+        # Write out each release file.
+        for credit in self.credits:
+            self.output.write('\n{0}'.format(credit))
+
+    def write_spacing(self):
+        while self.spacer > 0:
+            self.spacer = self.spacer - 1
+            self.output.write('\n')
+
+    def write_key_value(self, key, value):
+        self.output.write('\n* **{0}:** {1}'.format(key, value))
+
+        if self.spacer == 0:
+            self.spacer = 1
+
+    def write_audience(self):
+        if not self.contains(self.project, 'audience'):
+            return
+
+        self.write_key_value('Audience', self.project.audience)
+
+    def write_license(self):
+        if not self.contains(self.project, 'license'):
+            return
+
+        if 'resource' in self.project.license.xml_attributes:
+            value = '[[{0}|{1}]]'.format(
+                self.project.license.resource,
+                self.project.license)
+        else:
+            value = self.project.license
+
+        self.write_key_value('License', value)
+
+    def write_language(self):
+        if not self.contains(self.project, 'programming_language'):
+            return
+
+        languages = []
+
+        for language in self.project.programming_language:
+            languages.append(unicode(language))
+
+        languages.sort()
+        self.write_key_value('Language', ", ".join(languages))
+
+    def write_releases(self):
+        if not self.contains(self.project, 'release'):
+            return
+
+        # Write out the header line.
+        self.output.write('\n\n== Releases\n\n')
+
+        # Write out each release file.
+        for release in self.project.release:
+            # Write out the header line.
+            version = self.format_version(release.Version)
+            self.output.write('* {0}\n'.format(version))
+
+            # Write out the format links.
+            for fr in release.Version.file_release:
+                self.output.write('** [[{0}|{1}]]\n'.format(
+                    fr.resource,
+                    fr))
+
+if __name__ == "__main__":
+    doap = Process(sys.argv[1:])
+    doap.process()

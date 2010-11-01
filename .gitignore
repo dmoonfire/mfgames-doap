@@ -1,0 +1,8 @@
+*~
+*.pyc
+*.results
+*.log
+
+build
+
+/src/mfgames-doapc
